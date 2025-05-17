@@ -57,7 +57,6 @@ type InstanceReconciler struct {
 	client.Client
 	Log           logr.Logger
 	SchemeVal     *runtime.Scheme
-	Images        map[string]string
 	Recorder      record.EventRecorder
 	InstanceLocks *sync.Map
 
@@ -96,6 +95,23 @@ const (
 	DefaultStsPatchingTimeout            = 25 * time.Minute
 	reconcileTimeout                     = 3 * time.Minute
 )
+
+func (r *InstanceReconciler) InstanceStatefulSetImages(ctx context.Context, instanceSpecImages map[string]string) (images map[string]string) {
+	// Gets expected STS images from the Instance CRD, or return default values
+	images = map[string]string{
+		"dbinit":          "gcr.io/elcarro/oracle.db.anthosapis.com/dbinit:latest",
+		"logging_sidecar": "gcr.io/elcarro/oracle.db.anthosapis.com/loggingsidecar:latest",
+		"monitoring":      "gcr.io/elcarro/oracle.db.anthosapis.com/monitoring:latest",
+	}
+	for key, defaultImage := range images {
+		if image, exists := instanceSpecImages[key]; exists {
+			images[key] = image
+		} else {
+			images[key] = defaultImage
+		}
+	} 
+	return images
+}
 
 func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, respErr error) {
 	ctx, cancel := context.WithTimeout(ctx, reconcileTimeout)
@@ -204,7 +220,7 @@ func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_
 		return ctrl.Result{}, err
 	}
 
-	images := CloneMap(r.Images)
+	images := r.InstanceStatefulSetImages(ctx, inst.Spec.Images)
 
 	if err := r.overrideDefaultImages(config, images, &inst, log); err != nil {
 		return ctrl.Result{}, err
@@ -699,7 +715,7 @@ func (r *InstanceReconciler) setDnfs(ctx context.Context, inst v1alpha1.Instance
 }
 
 func (r *InstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Log.V(1).Info("SetupWithManager", "images", r.Images)
+	r.Log.V(1).Info("SetupWithManager")
 
 	// configPredicate is used to determine if watched events should cause
 	// all instances in the namespace to be reconciled. Right now only
