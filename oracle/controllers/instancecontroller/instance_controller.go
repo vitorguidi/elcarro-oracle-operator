@@ -94,23 +94,27 @@ const (
 	dateFormat                           = "20060102"
 	DefaultStsPatchingTimeout            = 25 * time.Minute
 	reconcileTimeout                     = 3 * time.Minute
+	defaultLoggingSidecarImage           = "gcr.io/elcarro/oracle.db.anthosapis.com/loggingsidecar:latest"
+	defaultDbInitImage                   = "gcr.io/elcarro/oracle.db.anthosapis.com/dbinit:latest"
+	defaultMonitoringImage               = "gcr.io/elcarro/oracle.db.anthosapis.com/monitoring:latest"
 )
 
 func (r *InstanceReconciler) InstanceStatefulSetImages(ctx context.Context, instanceSpecImages map[string]string) (images map[string]string) {
 	// Gets expected STS images from the Instance CRD, or return default values
-	images = map[string]string{
-		"dbinit":          "gcr.io/elcarro/oracle.db.anthosapis.com/dbinit:latest",
-		"logging_sidecar": "gcr.io/elcarro/oracle.db.anthosapis.com/loggingsidecar:latest",
-		"monitoring":      "gcr.io/elcarro/oracle.db.anthosapis.com/monitoring:latest",
+	defaultImages := map[string]string{
+		"dbinit":          defaultDbInitImage,
+		"logging_sidecar": defaultLoggingSidecarImage,
+		"monitoring":      defaultMonitoringImage,
+		"service":         "",
 	}
-	for key, defaultImage := range images {
+	for key, defaultImage := range defaultImages {
 		if image, exists := instanceSpecImages[key]; exists {
-			images[key] = image
+			defaultImages[key] = image
 		} else {
-			images[key] = defaultImage
+			defaultImages[key] = defaultImage
 		}
-	} 
-	return images
+	}
+	return defaultImages
 }
 
 func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, respErr error) {
