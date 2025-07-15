@@ -57,7 +57,6 @@ type InstanceReconciler struct {
 	client.Client
 	Log           logr.Logger
 	SchemeVal     *runtime.Scheme
-	Images        map[string]string
 	Recorder      record.EventRecorder
 	InstanceLocks *sync.Map
 
@@ -95,7 +94,28 @@ const (
 	dateFormat                           = "20060102"
 	DefaultStsPatchingTimeout            = 25 * time.Minute
 	reconcileTimeout                     = 3 * time.Minute
+	defaultLoggingSidecarImage           = "gcr.io/elcarro/oracle.db.anthosapis.com/loggingsidecar:latest"
+	defaultDbInitImage                   = "gcr.io/elcarro/oracle.db.anthosapis.com/dbinit:latest"
+	defaultMonitoringImage               = "gcr.io/elcarro/oracle.db.anthosapis.com/monitoring:latest"
 )
+
+func (r *InstanceReconciler) InstanceStatefulSetImages(ctx context.Context, instanceSpecImages map[string]string) (images map[string]string) {
+	// Gets expected STS images from the Instance CRD, or return default values
+	defaultImages := map[string]string{
+		"dbinit":          defaultDbInitImage,
+		"logging_sidecar": defaultLoggingSidecarImage,
+		"monitoring":      defaultMonitoringImage,
+		"service":         "",
+	}
+	for key, defaultImage := range defaultImages {
+		if image, exists := instanceSpecImages[key]; exists {
+			defaultImages[key] = image
+		} else {
+			defaultImages[key] = defaultImage
+		}
+	}
+	return defaultImages
+}
 
 func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, respErr error) {
 	ctx, cancel := context.WithTimeout(ctx, reconcileTimeout)
@@ -204,7 +224,7 @@ func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_
 		return ctrl.Result{}, err
 	}
 
-	images := CloneMap(r.Images)
+	images := r.InstanceStatefulSetImages(ctx, inst.Spec.Images)
 
 	if err := r.overrideDefaultImages(config, images, &inst, log); err != nil {
 		return ctrl.Result{}, err
@@ -699,7 +719,7 @@ func (r *InstanceReconciler) setDnfs(ctx context.Context, inst v1alpha1.Instance
 }
 
 func (r *InstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Log.V(1).Info("SetupWithManager", "images", r.Images)
+	r.Log.V(1).Info("SetupWithManager")
 
 	// configPredicate is used to determine if watched events should cause
 	// all instances in the namespace to be reconciled. Right now only

@@ -278,10 +278,6 @@ prepare-release:
 	sed -i "s/gcr.io\/elcarro/gcr.io\/${PROW_PROJECT}/g" main.go
 	echo "updating image tags for operator.yaml..."
 	sed -i "s/operator:latest/operator:${RELEASE_NAME}/g" operator.yaml
-	echo "updating image tags for main.go..."
-	sed -i "s/dbinit:latest/dbinit:${RELEASE_NAME}/g" main.go
-	sed -i "s/monitoring:latest/monitoring:${RELEASE_NAME}/g" main.go
-	sed -i "s/loggingsidecar:latest/loggingsidecar:${RELEASE_NAME}/g" main.go
 
 export EL_CARRO_RELEASE_ARTIFACTS_DIR ?= release-artifacts
 copy-release-artifacts:

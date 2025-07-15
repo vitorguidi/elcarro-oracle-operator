@@ -48,11 +48,6 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	dbInitImage          = flag.String("db_init_image_uri", "gcr.io/elcarro/oracle.db.anthosapis.com/dbinit:latest", "DB POD init binary image URI")
-	serviceImage         = flag.String("service_image_uri", "", "GCR service URI")
-	loggingSidecarImage  = flag.String("logging_sidecar_image_uri", "gcr.io/elcarro/oracle.db.anthosapis.com/loggingsidecar:latest", "Logging Sidecar image URI")
-	monitoringAgentImage = flag.String("monitoring_agent_image_uri", "gcr.io/elcarro/oracle.db.anthosapis.com/monitoring:latest", "Monitoring Agent image URI")
-
 	namespace = flag.String("namespace", "", "TESTING ONLY: Limits controller to watching resources in this namespace only")
 )
 
@@ -81,12 +76,6 @@ func main() {
 
 	ctrl.SetLogger(klogr.New())
 
-	images := make(map[string]string)
-	images["dbinit"] = *dbInitImage
-	images["service"] = *serviceImage
-	images["logging_sidecar"] = *loggingSidecarImage
-	images["monitoring"] = *monitoringAgentImage
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
@@ -106,7 +95,6 @@ func main() {
 		Client:        mgr.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("Instance"),
 		SchemeVal:     mgr.GetScheme(),
-		Images:        images,
 		Recorder:      mgr.GetEventRecorderFor("instance-controller"),
 		InstanceLocks: &locker,
 

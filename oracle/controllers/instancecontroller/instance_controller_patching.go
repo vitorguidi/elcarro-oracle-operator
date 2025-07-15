@@ -348,7 +348,19 @@ func (r *InstanceReconciler) recoverFromPatchingFailure(ctx context.Context, ins
 	log.Info("Restoring from a snapshot due to patching failure. Restoring from Backup ID ", inst.Status.BackupID)
 	inst.Spec.Restore = buildRestoreSpecUsingSnapshotBackupID(inst.Status.BackupID)
 
-	stsParams.Images = cloneMap(inst.Status.ActiveImages)
+	// There is a scenario where the instance was never successfully bootstrapped
+	// Therefore, active images will always be empty
+	lastActiveImages := cloneMap(inst.Status.ActiveImages)
+	defaultImages := map[string]string{
+		"dbinit":          defaultDbInitImage,
+		"logging_sidecar": defaultLoggingSidecarImage,
+		"monitoring":      defaultMonitoringImage,
+		"service":         "",
+	}
+	for k, v := range lastActiveImages {
+		defaultImages[k] = v
+	}
+	stsParams.Images = defaultImages
 	log.Info("recoverFromPatchingFailure: stsparams", "images", stsParams.Images)
 	// Start restore process
 	return r.restoreSnapshot(ctx, inst, *stsParams, r.Log)
