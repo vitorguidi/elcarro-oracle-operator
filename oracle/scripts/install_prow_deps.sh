@@ -30,6 +30,13 @@ curl -fsSL https://storage.googleapis.com/www.bazel.build/bazel-release.pub.gpg 
 mv bazel.gpg /etc/apt/trusted.gpg.d/
 echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
 
+# remove the out of date helm repository, update it with the new buildkite one
+# see https://helm.sh/docs/intro/install/#from-apt-debianubuntu
+# TODO:vitorguidi remove this once the base ods kubekins image is rebuilt against a more recent base kubekins one
+test -f /etc/apt/sources.list.d/helm-stable-debian.list && rm /etc/apt/sources.list.d/helm-stable-debian.list
+curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" | tee /etc/apt/sources.list.d/helm-stable-debian.list
+
 # everything we can get from debian packages.
 apt-get update -qq
 apt-get install -y \
